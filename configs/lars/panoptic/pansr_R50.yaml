@@ -1,0 +1,76 @@
+_BASE_: Base-LaRS.yaml
+OUTPUT_DIR: output/runs/pansr_R50
+
+INPUT:
+  COPY_PASTE:
+    ENABLED: True
+    OBJECTS_DIR: "/home/lojze/data/datasets/LaRS/split_v0.9.3/train/objects_v2"
+    ROTATION_RANGE: [-15, 15]
+    MAX_SCALE: 1.2
+
+MODEL:
+  META_ARCHITECTURE: "PanSR"
+  SEM_SEG_HEAD:
+    NAME: "PanSRHead"
+    IGNORE_VALUE: 0
+    NUM_CLASSES: 12
+    LOSS_WEIGHT: 1.0
+    CONVS_DIM: 256
+    MASK_DIM: 256
+    NORM: "GN"
+    # pixel decoder
+    PIXEL_DECODER_NAME: "PanSREncoder"
+    DIM_FEEDFORWARD: 2048
+    NUM_FEATURE_LEVELS: 3
+    TOTAL_NUM_FEATURE_LEVELS: 4
+    IN_FEATURES: ["res2", "res3", "res4", "res5"]
+    DEFORMABLE_TRANSFORMER_ENCODER_IN_FEATURES: ["res3", "res4", "res5"]
+    COMMON_STRIDE: 4
+    TRANSFORMER_ENC_LAYERS: 6
+    FEATURE_ORDER: "low2high"
+  PanSR:
+    TRANSFORMER_DECODER_NAME: "PanSRDecoder"
+    DEEP_SUPERVISION: True
+    NO_OBJECT_WEIGHT: 0.1
+    CLASS_WEIGHT: 4.0
+    MASK_WEIGHT: 5.0
+    DICE_WEIGHT: 5.0
+    HIDDEN_DIM: 256
+    NUM_OBJECT_QUERIES: 250
+    NUM_BG_QUERIES: 50
+    NHEADS: 8
+    DROPOUT: 0.0
+    DIM_FEEDFORWARD: 2048
+    ENC_LAYERS: 0
+    PRE_NORM: False
+    ENFORCE_INPUT_PROJ: False
+    SIZE_DIVISIBILITY: 32
+    DEC_LAYERS: 9  # 9 decoder layers, add one for the loss on learnable query
+    TRAIN_NUM_POINTS: 12544
+    OVERSAMPLE_RATIO: 3.0
+    IMPORTANCE_SAMPLE_RATIO: 0.75
+    EVAL_FLAG: 1
+    INITIAL_PRED: True
+    TWO_STAGE: True
+    INITIALIZE_BOX_TYPE: "no"
+    SEMANTIC_CE_LOSS: True
+    # Contribution (4): mask-conditioned queries
+    MASK_COND_QUERIES:
+      MODE: "standard"
+      NUM: 100
+    # Contribution (2): object-centric mask prediction (defaults: ENABLED True, dilate 0.1, min 2px)
+    TEST:
+      SEMANTIC_ON: False
+      INSTANCE_ON: False
+      PANOPTIC_ON: True
+      OVERLAP_THRESHOLD: 0.8
+      OBJECT_MASK_THRESHOLD: 0.25
+
+SOLVER:
+  IMS_PER_BATCH: 8
+  AMP:
+    ENABLED: True
+  CHECKPOINT_PERIOD: 10000
+TEST:
+  EVAL_PERIOD: 5000
+  DETECTIONS_PER_IMAGE: 250

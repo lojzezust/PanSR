@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+
+# Environments
+.venv/
+venv/
+
+# Outputs / weights / exports
+output/
+weights/
+hf_export/
+*.pth
+*.safetensors
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

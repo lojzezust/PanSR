@@ -1,0 +1,11 @@
+# Core scientific / vision deps (torch + detectron2 are installed separately in setup.sh)
+scipy
+shapely
+timm
+opencv-python
+Pillow
+# Panoptic encoding/decoding utilities used by the LaRS mapper and predict.py
+panopticapi @ git+https://github.com/cocodataset/panopticapi.git
+# HuggingFace Hub integration
+huggingface_hub>=0.23
+safetensors
