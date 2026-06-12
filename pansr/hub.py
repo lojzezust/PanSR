@@ -15,6 +15,7 @@ model weights are stored as ``model.safetensors`` (handled by the mixin). Rebuil
 requires the PanSR package to be importable (which registers the architecture and the LaRS
 metadata used at inference time).
 """
+import torch
 from torch import nn
 
 from detectron2.config import CfgNode, get_cfg
@@ -36,6 +37,7 @@ def cfg_from_yaml(cfg_yaml: str) -> CfgNode:
     add_pansr_config(cfg)
     cfg.merge_from_other_cfg(CfgNode.load_cfg(cfg_yaml))
     cfg.MODEL.WEIGHTS = ""  # weights are restored by the Hub mixin, not from a file
+    cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     return cfg
 
 
