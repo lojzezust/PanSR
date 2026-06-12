@@ -119,8 +119,6 @@ class PanSR(nn.Module):
         if not self.semantic_on:
             assert self.sem_seg_postprocess_before_inference
 
-        print('criterion.weight_dict ', self.criterion.weight_dict)
-
     @classmethod
     def from_config(cls, cfg):
         backbone = build_backbone(cfg)

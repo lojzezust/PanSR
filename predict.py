@@ -16,6 +16,7 @@ import os
 import numpy as np
 import torch
 from PIL import Image
+from tqdm import tqdm
 
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
@@ -84,7 +85,7 @@ def main():
         inputs = glob.glob(os.path.expanduser(inputs[0]))
     assert inputs, "No input images found"
 
-    for path in inputs:
+    for path in tqdm(inputs, "Predicting & saving"):
         img = read_image(path, format="BGR")
         with torch.no_grad():
             predictions = predictor(img)
@@ -92,22 +93,19 @@ def main():
 
         rgb = panoptic_to_lars_rgb(panoptic_seg, segments_info, metadata)
 
-        if args.output and os.path.isdir(args.output) or (args.output is None):
+        if args.output and len(inputs) > 1 or (args.output is None):
             out_dir = args.output or "."
             os.makedirs(out_dir, exist_ok=True)
             out_path = os.path.join(out_dir, os.path.splitext(os.path.basename(path))[0] + ".png")
         else:
             out_path = args.output
         Image.fromarray(rgb).save(out_path)
-        print(f"{path} -> {out_path}")
 
         if args.vis:
             vis = Visualizer(img[:, :, ::-1], metadata)
             vis_out = vis.draw_panoptic_seg(panoptic_seg.to("cpu"), segments_info)
-            vis_path = os.path.splitext(out_path)[0] + "_vis.png"
+            vis_path = os.path.splitext(out_path)[0] + "_vis.jpg"
             vis_out.save(vis_path)
-            print(f"    overlay -> {vis_path}")
-
 
 if __name__ == "__main__":
     main()
