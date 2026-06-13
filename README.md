@@ -6,9 +6,10 @@
 [![Cite](https://img.shields.io/badge/Cite-BibTeX-blue.svg)](#cite)
 
 PanSR is a transformer-based panoptic segmentation model for maritime obstacle scenes,
-trained and evaluated on the [LaRS](https://lojzezust.github.io/lars-dataset/) dataset. It is
-built on [MaskDINO](https://github.com/IDEA-Research/MaskDINO) / Mask2Former and adds four
-contributions that make it well suited to thin, small, and densely packed maritime obstacles.
+trained and evaluated on the [LaRS](https://lojzezust.github.io/lars-dataset/) dataset.
+
+![Examples of PanSR predictions.](assets/example.jpg)
+Examples of PanSR predictions.
 
 ## Installation
 
