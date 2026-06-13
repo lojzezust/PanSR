@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------
-# PanSR: Panoptic Segmentation of maritime scenes (release of "AnchorFormer").
+# PanSR: Panoptic Segmentation of maritime scenes.
 # Built on MaskDINO (Apache-2.0). See README for the four paper contributions.
 # ------------------------------------------------------------------------
 from . import data       # register all datasets (LaRS)

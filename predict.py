@@ -2,12 +2,12 @@
 """Run PanSR panoptic segmentation on a single image (or a glob of images).
 
 Examples:
-    # From a local (remapped) checkpoint:
+    # From a local checkpoint:
     python predict.py --config-file configs/lars/panoptic/pansr_Swin_L.yaml \
         --weights weights/pansr_lars_swin_l.pth --input assets/sample.jpg --output out.png
 
     # From the HuggingFace Hub (downloads weights + config):
-    python predict.py --hf-model lojze/pansr-lars-swin-l --input assets/sample.jpg --output out.png
+    python predict.py --hf-model lojzezust/pansr-lars-swinl --input assets/sample.jpg --output out.png
 """
 import argparse
 import glob
@@ -59,7 +59,7 @@ def panoptic_to_lars_rgb(panoptic_seg, segments_info, metadata):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config-file", default="configs/lars/panoptic/pansr_Swin_L.yaml")
-    ap.add_argument("--weights", default=None, help="Path to a (remapped) PanSR checkpoint")
+    ap.add_argument("--weights", default=None, help="Path to a PanSR checkpoint")
     ap.add_argument("--hf-model", default=None, help="HuggingFace Hub repo id to load weights+config from")
     ap.add_argument("--input", nargs="+", required=True, help="Image path(s) or a glob pattern")
     ap.add_argument("--output", default=None, help="Output file (single image) or directory")

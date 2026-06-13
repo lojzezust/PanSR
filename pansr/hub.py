@@ -1,14 +1,10 @@
 """HuggingFace Hub integration for PanSR.
 
 ``PanSRHF`` wraps the detectron2 PanSR model in a :class:`huggingface_hub.PyTorchModelHubMixin`
-so weights + config can be shared via the Hub:
+so weights + config can be loaded from the Hub:
 
-    # Load
     from pansr.hub import PanSRHF
-    model = PanSRHF.from_pretrained("lojze/pansr-lars-swin-l")
-
-    # Publish (after building from a local checkpoint, see tools/export_to_hub.py)
-    model.push_to_hub("lojze/pansr-lars-swin-l")
+    model = PanSRHF.from_pretrained("lojzezust/pansr-lars-swinl")
 
 The full (resolved) detectron2 config is stored as a YAML string in ``config.json`` and the
 model weights are stored as ``model.safetensors`` (handled by the mixin). Rebuilding the model

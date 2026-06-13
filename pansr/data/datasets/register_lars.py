@@ -7,8 +7,8 @@ import os.path as osp
 import json
 from detectron2.data import DatasetCatalog, MetadataCatalog
 
-# Root of the LaRS panoptic split. Override with the LARS_ROOT environment variable.
-LARS_ROOT = os.environ.get("LARS_ROOT", "/home/lojze/data/datasets/LaRS/split_v0.9.3")
+# Root of the LaRS dataset. Set the LARS_ROOT environment variable to point at it.
+LARS_ROOT = os.environ.get("LARS_ROOT", "datasets/LaRS")
 
 # Define the dataset class
 def get_lars_dataset(root_dir, split, annotation_file):
