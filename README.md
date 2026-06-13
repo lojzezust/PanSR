@@ -10,22 +10,6 @@ trained and evaluated on the [LaRS](https://lojzezust.github.io/lars-dataset/) d
 built on [MaskDINO](https://github.com/IDEA-Research/MaskDINO) / Mask2Former and adds four
 contributions that make it well suited to thin, small, and densely packed maritime obstacles.
 
-## Contributions (and where they live in the code)
-
-The model entry point is [`pansr/pansr_model.py`](pansr/pansr_model.py). Each contribution
-has its own clearly named module:
-
-| # | Contribution | Module | What it does |
-|---|--------------|--------|--------------|
-| 1 | **Object-Centric Proposal (OCP)** | [`pansr/modeling/ocp.py`](pansr/modeling/ocp.py) | An FCOS-style dense head over the FPN that produces object-centric proposals used to initialize the decoder's object queries. |
-| 2 | **Object-centric mask prediction** | [`pansr/modeling/object_centric_mask.py`](pansr/modeling/object_centric_mask.py) | Constrains each foreground mask to its predicted (dilated) box, suppressing mask leakage. |
-| 3 | **Proposal-aware matching** | [`pansr/modeling/matching.py`](pansr/modeling/matching.py) (`proposal_aware_matching`) | Refines Hungarian assignment by removing low-IoU matches and recovering high-IoU false positives. |
-| 4 | **Mask-conditioned queries** | [`pansr/modeling/mask_conditioned_queries.py`](pansr/modeling/mask_conditioned_queries.py) | Training-time auxiliary queries whose content is sampled *inside GT masks* and whose positions are noised GT boxes. |
-
-Contributions (1), (2) and (4) are wired together in
-[`pansr/modeling/transformer_decoder/pansr_decoder.py`](pansr/modeling/transformer_decoder/pansr_decoder.py);
-(3) is applied in [`pansr/modeling/disjoint_criterion.py`](pansr/modeling/disjoint_criterion.py).
-
 ## Installation
 
 Requirements:
@@ -58,7 +42,7 @@ Point the code at your LaRS dataset (used for training, evaluation, and inferenc
 export LARS_ROOT=/path/to/LaRS/split_v0.9.3
 ```
 
-## Inference
+## PanSR inference
 
 **Inference with HuggingFace model (easiest)**
 ```bash
@@ -89,29 +73,71 @@ python predict.py \
 | Swin-L | [link](https://box.vicos.si/pansr/pansr_lars_swin_l.pth) (`e3948f8084d1bc33a180dce7a4122bf7`) | [lojze/pansr-lars-swin-l](https://huggingface.co/lojze/pansr-lars-swin-l) | 57.3|
 
 
-## HuggingFace Hub
+## Using PanSR in code
 
-PanSR weights and config can be shared through the Hub via
-[`pansr/hub.py`](pansr/hub.py) (`PanSRHF`, a `PyTorchModelHubMixin`).
+Inference uses detectron2's `DefaultPredictor`, which handles preprocessing (resize +
+normalization) and takes a single **BGR** `uint8` image. Building the model requires the LaRS
+metadata, so make sure `LARS_ROOT` is set (see [Installation](#installation)).
+
+### Load the model
+
+**From the HuggingFace Hub** (downloads config + weights, see [`pansr/hub.py`](pansr/hub.py)):
 
 ```python
+import torch
+from detectron2.engine.defaults import DefaultPredictor
 from pansr.hub import PanSRHF
-model = PanSRHF.from_pretrained("lojze/pansr-lars-swin-l")   # downloads config + weights
+
+hf = PanSRHF.from_pretrained("lojzezust/pansr-lars-resnet50")   # or pansr-lars-swin-l
+cfg = hf.cfg
+predictor = DefaultPredictor(cfg)
+predictor.model = hf.model.to(cfg.MODEL.DEVICE).eval()
 ```
 
-```bash
-# Load with predict.py directly from the Hub:
-python predict.py --hf-model lojze/pansr-lars-swin-l --input assets/sample.jpg --output out.png
+**From a local config + weights:**
 
-# Export a local checkpoint to a Hub folder and/or push it:
-python tools/export_to_hub.py \
-    --config-file configs/lars/panoptic/pansr_Swin_L.yaml \
-    --weights weights/pansr_lars_swin_l.pth \
-    --save-dir hf_export/pansr-lars-swin-l \
-    --push-to lojze/pansr-lars-swin-l        # requires `huggingface-cli login`
+```python
+import torch
+from detectron2.config import get_cfg
+from detectron2.engine.defaults import DefaultPredictor
+from detectron2.projects.deeplab import add_deeplab_config
+from pansr import add_pansr_config
+
+cfg = get_cfg()
+add_deeplab_config(cfg)
+add_pansr_config(cfg)
+cfg.merge_from_file("configs/lars/panoptic/pansr_Swin_L.yaml")
+cfg.MODEL.WEIGHTS = "weights/pansr_lars_swin_l.pth"
+cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+cfg.freeze()
+
+predictor = DefaultPredictor(cfg)
 ```
 
-(Rebuilding the model from the Hub requires the LaRS metadata, i.e. `LARS_ROOT` pointing at the dataset.)
+### Run on an image
+
+```python
+import torch
+from detectron2.data import MetadataCatalog
+from detectron2.data.detection_utils import read_image
+
+img = read_image("assets/sample.jpg", format="BGR")   # HxWx3 uint8, BGR
+with torch.no_grad():
+    predictions = predictor(img)
+
+# Panoptic result: a HxW id map + per-segment metadata
+panoptic_seg, segments_info = predictions["panoptic_seg"]
+
+# Optional: draw a colored overlay
+from detectron2.utils.visualizer import Visualizer
+metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
+vis = Visualizer(img[:, :, ::-1], metadata)
+overlay = vis.draw_panoptic_seg(panoptic_seg.to("cpu"), segments_info)
+overlay.save("out_vis.jpg")
+```
+
+See [`predict.py`](predict.py) for a complete script (including encoding the result as a
+LaRS-format panoptic PNG) and the CLI usage shown under [Inference](#inference).
 
 ## Training
 
@@ -129,6 +155,22 @@ python train_net.py --num-gpus 4 --config-file configs/lars/panoptic/pansr_Swin_
 **Note:** Copy-paste augmentation expects pre-extracted objects under `$LARS_ROOT/train/objects_v2`
 (configurable via `INPUT.COPY_PASTE.OBJECTS_DIR`). The Swin-L ImageNet-22k backbone weights
 (`swin_large_patch4_window12_384_22k.pkl`) are only needed for from-scratch training.
+
+## Contributions (and where they live in the code)
+
+The model entry point is [`pansr/pansr_model.py`](pansr/pansr_model.py). Each contribution
+has its own clearly named module:
+
+| # | Contribution | Module | What it does |
+|---|--------------|--------|--------------|
+| 1 | **Object-Centric Proposal (OCP)** | [`pansr/modeling/ocp.py`](pansr/modeling/ocp.py) | An FCOS-style dense head over the FPN that produces object-centric proposals used to initialize the decoder's object queries. |
+| 2 | **Object-centric mask prediction** | [`pansr/modeling/object_centric_mask.py`](pansr/modeling/object_centric_mask.py) | Constrains each foreground mask to its predicted (dilated) box, suppressing mask leakage. |
+| 3 | **Proposal-aware matching** | [`pansr/modeling/matching.py`](pansr/modeling/matching.py) (`proposal_aware_matching`) | Refines Hungarian assignment by removing low-IoU matches and recovering high-IoU false positives. |
+| 4 | **Mask-conditioned queries** | [`pansr/modeling/mask_conditioned_queries.py`](pansr/modeling/mask_conditioned_queries.py) | Training-time auxiliary queries whose content is sampled *inside GT masks* and whose positions are noised GT boxes. |
+
+Contributions (1), (2) and (4) are wired together in
+[`pansr/modeling/transformer_decoder/pansr_decoder.py`](pansr/modeling/transformer_decoder/pansr_decoder.py);
+(3) is applied in [`pansr/modeling/disjoint_criterion.py`](pansr/modeling/disjoint_criterion.py).
 
 
 ## License
