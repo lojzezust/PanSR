@@ -105,7 +105,7 @@ echo "==> Building the MultiScaleDeformableAttention CUDA op (arch $TORCH_CUDA_A
 echo "==> Verifying imports"
 "$PY" -c "import torch; print('torch', torch.__version__, 'cuda build', torch.version.cuda)"
 "$PY" -c "import detectron2; print('detectron2', detectron2.__version__)"
-"$PY" -c "import MultiScaleDeformableAttention; print('MSDeformAttn op OK')"
+"$PY" -c "import torch, MultiScaleDeformableAttention; print('MSDeformAttn op OK')"
 "$PY" -c "import pansr; print('pansr import OK — meta-arch PanSR registered')"
 
 echo ""

@@ -56,8 +56,8 @@ pip install -e .
 export FORCE_CUDA=1
 ( cd pansr/modeling/pixel_decoder/ops && python setup.py build install )
 
-# 5. Verify
-python -c "import detectron2, MultiScaleDeformableAttention, pansr; print('PanSR OK')"
+# 5. Verify (import torch first — the CUDA op links against torch's libc10.so)
+python -c "import torch, detectron2, MultiScaleDeformableAttention, pansr; print('PanSR OK')"
 ```
 
 > **Troubleshooting**
