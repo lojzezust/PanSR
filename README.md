@@ -1,13 +1,17 @@
-# PanSR — Panoptic Segmentation for Maritime Scenes
+# PanSR: An Object-Centric Mask Transformer for Panoptic Segmentation
+
+[![arXiv](https://img.shields.io/badge/arXiv-2412.10589-b31b1b.svg)](https://arxiv.org/abs/2412.10589)
+[![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Models-yellow)](https://huggingface.co/collections/lojzezust/pansr)
+[![Cite](https://img.shields.io/badge/Cite-BibTeX-blue.svg)](#cite)
 
 PanSR is a transformer-based panoptic segmentation model for maritime obstacle scenes,
 trained and evaluated on the [LaRS](https://lojzezust.github.io/lars-dataset/) dataset. It is
 built on [MaskDINO](https://github.com/IDEA-Research/MaskDINO) / Mask2Former and adds four
 contributions that make it well suited to thin, small, and densely packed maritime obstacles.
 
-## The four contributions (and where they live in the code)
+## Contributions (and where they live in the code)
 
-The model entry point is [`pansr/pansr_model.py`](pansr/pansr_model.py). Each paper contribution
+The model entry point is [`pansr/pansr_model.py`](pansr/pansr_model.py). Each contribution
 has its own clearly named module:
 
 | # | Contribution | Module | What it does |
@@ -53,22 +57,20 @@ Point the code at your LaRS dataset (used for training, evaluation, and inferenc
 export LARS_ROOT=/path/to/LaRS/split_v0.9.3
 ```
 
-## Pretrained weights
+## Inference
 
-The released weights are an internal "AnchorFormer" checkpoint. Remap them to the PanSR module
-layout once (this only renames the OCP submodule keys, see
-[`tools/remap_weights.py`](tools/remap_weights.py)):
-
+**Inference with HuggingFace model (easiest)**
 ```bash
-python tools/remap_weights.py \
-    --src /path/to/AF_J22_Swin_L_bs16_90k/model_final.pth \
-    --dst weights/pansr_lars_swin_l.pth \
-    --validate --config-file configs/lars/panoptic/pansr_Swin_L.yaml
+python predict.py \
+    --hf-model lojzezust/pansr-lars-resnet50 \
+    --input assets/sample.jpg \
+    --output out.png --vis
 ```
 
-`--validate` builds PanSR and strict-loads the remapped weights, asserting 0 missing / 0 unexpected keys.
+This writes a LaRS-format panoptic mask (`out.png`) and, with `--vis`, a human-friendly overlay
+(`out_vis.png`). `--input` also accepts a glob (e.g. `'images/*.jpg'`) with `--output <dir>`.
 
-## Inference
+**Inference using local weights**
 
 ```bash
 python predict.py \
@@ -78,8 +80,13 @@ python predict.py \
     --output out.png --vis
 ```
 
-This writes a LaRS-format panoptic mask (`out.png`) and, with `--vis`, a human-friendly overlay
-(`out_vis.png`). `--input` also accepts a glob (e.g. `'images/*.jpg'`) with `--output <dir>`.
+## Pretrained weights
+
+| Backbone | Weights (md5) | HuggingFace | PQ (LaRS) |
+|----------|---------------|-------------|-----------|
+| ResNet-50 | [link](https://box.vicos.si/pansr/pansr_lars_resnet50.pth) (`c2554a5803c217c453bad78205ea4a3f`) | [lojze/pansr-lars-r50](https://huggingface.co/lojze/pansr-lars-r50) | 54.2 |
+| Swin-L | [link](https://box.vicos.si/pansr/pansr_lars_swin_l.pth) (`e3948f8084d1bc33a180dce7a4122bf7`) | [lojze/pansr-lars-swin-l](https://huggingface.co/lojze/pansr-lars-swin-l) | 57.3|
+
 
 ## HuggingFace Hub
 
@@ -108,7 +115,7 @@ python tools/export_to_hub.py \
 ## Training
 
 ```bash
-export LARS_ROOT=/path/to/LaRS/split_v0.9.3
+export LARS_ROOT=/path/to/LaRS
 
 # ResNet-50
 python train_net.py --num-gpus 4 --config-file configs/lars/panoptic/pansr_R50.yaml
@@ -118,51 +125,25 @@ python train_net.py --num-gpus 4 --config-file configs/lars/panoptic/pansr_Swin_
     MODEL.WEIGHTS /path/to/swin_large_patch4_window12_384_22k.pkl
 ```
 
-Evaluation only:
-
-```bash
-python train_net.py --eval_only --num-gpus 4 \
-    --config-file configs/lars/panoptic/pansr_Swin_L.yaml \
-    MODEL.WEIGHTS weights/pansr_lars_swin_l.pth
-```
-
-Copy-paste augmentation expects pre-extracted objects under `$LARS_ROOT/train/objects_v2`
+**Note:** Copy-paste augmentation expects pre-extracted objects under `$LARS_ROOT/train/objects_v2`
 (configurable via `INPUT.COPY_PASTE.OBJECTS_DIR`). The Swin-L ImageNet-22k backbone weights
 (`swin_large_patch4_window12_384_22k.pkl`) are only needed for from-scratch training.
 
-## Configuration
-
-Configs use the detectron2 YACS system; PanSR-specific defaults are defined in
-[`pansr/config.py`](pansr/config.py) under the `cfg.MODEL.PanSR` namespace. The contribution knobs are:
-
-- `MODEL.PanSR.OBJECT_CENTRIC_MASK.{ENABLED,DILATE_AMOUNT,MIN_DILATE_PX}` — contribution (2)
-- `MODEL.PanSR.MASK_COND_QUERIES.{MODE,NUM,NOISE_SCALE,MAX_GROUP_SIZE}` — contribution (4)
-- `MODEL.PanSR.TWO_STAGE` — use OCP proposals to initialize queries (contribution 1)
-
-## Repository layout
-
-```
-pansr/                         # the model package
-  pansr_model.py               # PanSR meta-architecture (detectron2 META_ARCH "PanSR")
-  config.py                    # add_pansr_config + cfg.MODEL.PanSR defaults
-  hub.py                       # HuggingFace PyTorchModelHubMixin wrapper
-  modeling/
-    ocp.py                     # (1) Object-Centric Proposal head/module
-    object_centric_mask.py     # (2) object-centric mask prediction
-    matching.py                # HungarianMatcher + (3) proposal_aware_matching
-    mask_conditioned_queries.py# (4) mask-conditioned queries
-    transformer_decoder/pansr_decoder.py
-    pixel_decoder/             # PanSREncoder + MSDeformAttn CUDA op (ops/)
-    meta_arch/pansr_head.py    # PanSRHead
-    backbone/swin.py           # Swin-L backbone (ResNet-50 via detectron2)
-  data/                        # LaRS registration + panoptic dataset mapper + copy-paste
-configs/lars/panoptic/         # Base-LaRS.yaml, pansr_R50.yaml, pansr_Swin_L.yaml
-tools/remap_weights.py         # original checkpoint -> PanSR keys (+ strict validation)
-tools/export_to_hub.py         # build from a checkpoint and save/push to the Hub
-train_net.py                   # training / evaluation entry point
-predict.py                     # single-image inference example
-```
 
 ## License
 
 Apache-2.0 (see [LICENSE](LICENSE)). Built on MaskDINO, Mask2Former, DINO, Deformable-DETR and FCOS.
+
+## Cite
+
+If you use PanSR in your research, please cite our work:
+
+```bibtex
+@article{Zust2026PanSR,
+  author={Žust, Lojze and Kristan, Matej},
+  journal={T-ITS}, 
+  title={PanSR: An Object-Centric Mask Transformer for Maritime Panoptic Segmentation}, 
+  year={2026},
+  doi={10.1109/TITS.2026.3697512}
+}
+```
