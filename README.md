@@ -103,8 +103,8 @@ python predict.py \
 
 | Backbone | Weights (md5) | HuggingFace | PQ (LaRS) |
 |----------|---------------|-------------|-----------|
-| ResNet-50 | [link](https://box.vicos.si/pansr/pansr_lars_resnet50.pth) (`c2554a5803c217c453bad78205ea4a3f`) | [lojze/pansr-lars-r50](https://huggingface.co/lojze/pansr-lars-r50) | 54.2 |
-| Swin-L | [link](https://box.vicos.si/pansr/pansr_lars_swin_l.pth) (`e3948f8084d1bc33a180dce7a4122bf7`) | [lojze/pansr-lars-swin-l](https://huggingface.co/lojze/pansr-lars-swin-l) | 57.3|
+| ResNet-50 | [link](https://box.vicos.si/pansr/pansr_lars_resnet50.pth) (`c2554a5803c217c453bad78205ea4a3f`) | [lojzezust/pansr-lars-resnet50](https://huggingface.co/lojzezust/pansr-lars-resnet50) | 54.2 |
+| Swin-L | [link](https://box.vicos.si/pansr/pansr_lars_swin_l.pth) (`e3948f8084d1bc33a180dce7a4122bf7`) | [lojzezust/pansr-lars-swinl](https://huggingface.co/lojzezust/pansr-lars-swinl) | 57.3|
 
 
 ## Using PanSR in code
@@ -122,7 +122,7 @@ import torch
 from detectron2.engine.defaults import DefaultPredictor
 from pansr.hub import PanSRHF
 
-hf = PanSRHF.from_pretrained("lojzezust/pansr-lars-resnet50")   # or pansr-lars-swin-l
+hf = PanSRHF.from_pretrained("lojzezust/pansr-lars-resnet50")   # or pansr-lars-swinl
 cfg = hf.cfg
 predictor = DefaultPredictor(cfg)
 predictor.model = hf.model.to(cfg.MODEL.DEVICE).eval()
