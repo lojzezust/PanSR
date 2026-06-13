@@ -13,27 +13,53 @@ contributions that make it well suited to thin, small, and densely packed mariti
 ## Installation
 
 Requirements:
-- a CUDA 12.x toolkit (`nvcc`) and `gcc`,
-- **Python 3.10 with development headers** (`Python.h`) — e.g. `sudo apt install python3.10-dev`.
-  A `conda` Python already ships these headers.
-- a venv tool: [`uv`](https://github.com/astral-sh/uv) (preferred) or `conda` or stdlib `venv`.
+- a CUDA 12.x toolkit (`nvcc`) and `gcc` on `PATH`,
+- **Python 3.10 with development headers** (`Python.h`) — detectron2 and the CUDA op are compiled
+  from source and need them. A `conda` Python ships these; otherwise `sudo apt install python3.10-dev`.
+
+Create and activate an environment, then run `setup.sh`. It installs everything into the active
+environment (PyTorch cu124, detectron2 from source, PanSR + deps, and the CUDA op):
 
 ```bash
-bash setup.sh                 # creates ./.venv, installs torch (cu124), detectron2, deps, builds the CUDA op
-source .venv/bin/activate
+conda create -n pansr python=3.10 -y && conda activate pansr   # or any venv with Python 3.10 + headers
+bash setup.sh
 ```
 
-`setup.sh` is configurable via env vars (`PYTHON_VERSION`, `TORCH_VERSION`, `TORCH_CUDA_INDEX`,
+`setup.sh` is configurable via env vars (`TORCH_VERSION`, `TORCHVISION_VERSION`, `TORCH_CUDA_INDEX`,
 `TORCH_CUDA_ARCH_LIST`). The default `TORCH_CUDA_ARCH_LIST=8.6` targets Ampere GPUs (e.g. RTX A4500);
-set it to your GPU's compute capability if different. To build the venv from a specific interpreter
-(e.g. a conda Python that has headers), set `PANSR_PYTHON=/path/to/python`.
+set it to your GPU's compute capability if different.
 
-> **Notes**
-> - detectron2 and the MSDeformAttn op are compiled from source against the installed PyTorch. The
->   most common failure is `fatal error: Python.h: No such file or directory` — install the Python
->   dev headers (above) or point `PANSR_PYTHON` at an interpreter that has them.
-> - If the from-source detectron2 build is troublesome on your platform, fall back to a prebuilt
->   combo (e.g. `torch==2.1.2` + the matching detectron2 wheel) and re-run the op build.
+### Manual installation
+
+`setup.sh` is just the commands below — run them yourself if you'd rather not run the script. With
+your environment activated, from the repo root:
+
+```bash
+# 1. PyTorch (CUDA 12.4) + torchvision, and build helpers
+pip install -U pip
+pip install torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
+pip install ninja wheel setuptools cython
+
+# 2. detectron2 from source (matched to the installed PyTorch)
+pip install --no-build-isolation 'git+https://github.com/facebookresearch/detectron2.git'
+
+# 3. PanSR + Python dependencies
+pip install -r requirements.txt
+pip install -e .
+
+# 4. Build the MultiScaleDeformableAttention CUDA op (set the arch for your GPU)
+export TORCH_CUDA_ARCH_LIST=8.6 FORCE_CUDA=1
+( cd pansr/modeling/pixel_decoder/ops && python setup.py build install )
+
+# 5. Verify
+python -c "import detectron2, MultiScaleDeformableAttention, pansr; print('PanSR OK')"
+```
+
+> **Troubleshooting**
+> - `fatal error: Python.h: No such file or directory` — your Python has no dev headers. Use a conda
+>   Python or install them (`sudo apt install python3.10-dev`), then reinstall detectron2 and rebuild the op.
+> - If the from-source detectron2 build is troublesome on your platform, fall back to a prebuilt combo
+>   (e.g. `torch==2.1.2` + the matching detectron2 wheel) and re-run step 4.
 > - If `torch.cuda.is_available()` is `False` despite GPUs being present, set `CUDA_VISIBLE_DEVICES`.
 
 Point the code at your LaRS dataset (used for training, evaluation, and inference metadata):
