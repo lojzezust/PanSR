@@ -1,6 +1,7 @@
 # PanSR: An Object-Centric Mask Transformer for Panoptic Segmentation
 
 [![arXiv](https://img.shields.io/badge/arXiv-2412.10589-b31b1b.svg)](https://arxiv.org/abs/2412.10589)
+[![DOI](https://img.shields.io/badge/DOI-10.1109%2FTITS.2026.3697512-blue.svg)](https://doi.org/10.1109/TITS.2026.3697512)
 [![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Models-yellow)](https://huggingface.co/collections/lojzezust/pansr)
 [![Cite](https://img.shields.io/badge/Cite-BibTeX-blue.svg)](#cite)
 
