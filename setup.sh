@@ -66,6 +66,31 @@ echo "==> Installing PyTorch ${TORCH_VERSION} (+cu124) and torchvision ${TORCHVI
 echo "==> Installing build helpers"
 "$PY" -m pip install ninja wheel setuptools cython
 
+# Resolve the CUDA compute capability for the from-source builds below. If the
+# user pinned TORCH_CUDA_ARCH_LIST we keep it; otherwise detect it from the
+# visible GPU. (Leaving it unset makes PyTorch crash with a cryptic
+# "IndexError: list index out of range" when no GPU is visible at build time.)
+if [ -z "${TORCH_CUDA_ARCH_LIST:-}" ]; then
+  echo "==> Detecting GPU compute capability"
+  DETECTED_ARCH="$("$PY" - <<'PYEOF'
+import torch
+caps = sorted({"%d.%d" % torch.cuda.get_device_capability(i)
+               for i in range(torch.cuda.device_count())}) if torch.cuda.is_available() else []
+print(";".join(caps))
+PYEOF
+)"
+  if [ -n "$DETECTED_ARCH" ]; then
+    export TORCH_CUDA_ARCH_LIST="$DETECTED_ARCH"
+    echo "    detected TORCH_CUDA_ARCH_LIST=$TORCH_CUDA_ARCH_LIST"
+  else
+    echo "ERROR: no visible CUDA GPU to auto-detect compute capability from."
+    echo "       Make a GPU visible (e.g. export CUDA_VISIBLE_DEVICES=0) or set the"
+    echo "       target arch explicitly (e.g. export TORCH_CUDA_ARCH_LIST=8.6 for Ampere),"
+    echo "       then re-run."
+    exit 1
+  fi
+fi
+
 echo "==> Installing detectron2 (from source, matched to the installed PyTorch)"
 "$PY" -m pip install --no-build-isolation 'git+https://github.com/facebookresearch/detectron2.git'
 
@@ -73,12 +98,7 @@ echo "==> Installing PanSR + Python dependencies"
 "$PY" -m pip install -r requirements.txt
 "$PY" -m pip install -e .
 
-echo "==> Building the MultiScaleDeformableAttention CUDA op"
-if [ -n "${TORCH_CUDA_ARCH_LIST:-}" ]; then
-  echo "    targeting compute capability TORCH_CUDA_ARCH_LIST=$TORCH_CUDA_ARCH_LIST"
-else
-  echo "    TORCH_CUDA_ARCH_LIST unset — PyTorch will auto-detect from the visible GPU"
-fi
+echo "==> Building the MultiScaleDeformableAttention CUDA op (arch $TORCH_CUDA_ARCH_LIST)"
 ( cd pansr/modeling/pixel_decoder/ops && "$PY" setup.py build install )
 
 # --- Verify ---------------------------------------------------------------

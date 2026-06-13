@@ -49,8 +49,10 @@ pip install --no-build-isolation 'git+https://github.com/facebookresearch/detect
 pip install -r requirements.txt
 pip install -e .
 
-# 4. Build the MultiScaleDeformableAttention CUDA op
-#    (arch is auto-detected from the visible GPU; optionally pin it, e.g. export TORCH_CUDA_ARCH_LIST=8.6)
+# 4. Build the MultiScaleDeformableAttention CUDA op.
+#    PyTorch auto-detects the arch from the visible GPU; if no GPU is visible at
+#    build time, pin it (e.g. export TORCH_CUDA_ARCH_LIST=8.6 for Ampere) to avoid
+#    an "IndexError: list index out of range" from torch's build system.
 export FORCE_CUDA=1
 ( cd pansr/modeling/pixel_decoder/ops && python setup.py build install )
 
@@ -63,6 +65,9 @@ python -c "import detectron2, MultiScaleDeformableAttention, pansr; print('PanSR
 >   Python or install them (`sudo apt install python3.10-dev`), then reinstall detectron2 and rebuild the op.
 > - If the from-source detectron2 build is troublesome on your platform, fall back to a prebuilt combo
 >   (e.g. `torch==2.1.2` + the matching detectron2 wheel) and re-run step 4.
+> - `IndexError: list index out of range` from `torch/utils/cpp_extension.py` during a CUDA build
+>   means no GPU was visible to auto-detect the arch — set `CUDA_VISIBLE_DEVICES` or pin
+>   `TORCH_CUDA_ARCH_LIST` (e.g. `8.6`), then re-run.
 > - If `torch.cuda.is_available()` is `False` despite GPUs being present, set `CUDA_VISIBLE_DEVICES`.
 
 Point the code at your LaRS dataset (used for training, evaluation, and inference metadata):
