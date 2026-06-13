@@ -73,7 +73,7 @@ python -c "import torch, detectron2, MultiScaleDeformableAttention, pansr; print
 Point the code at your LaRS dataset (used for training, evaluation, and inference metadata):
 
 ```bash
-export LARS_ROOT=/path/to/LaRS/split_v0.9.3
+export LARS_ROOT=/path/to/LaRS
 ```
 
 ## PanSR inference

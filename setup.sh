@@ -109,5 +109,5 @@ echo "==> Verifying imports"
 "$PY" -c "import pansr; print('pansr import OK — meta-arch PanSR registered')"
 
 echo ""
-echo "Done. Set the dataset root before running:  export LARS_ROOT=/path/to/LaRS/split_v0.9.3"
+echo "Done. Set the dataset root before running:  export LARS_ROOT=/path/to/LaRS"
 echo "If torch.cuda.is_available() is False despite GPUs present, set CUDA_VISIBLE_DEVICES."
