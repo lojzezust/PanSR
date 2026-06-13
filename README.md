@@ -26,8 +26,9 @@ bash setup.sh
 ```
 
 `setup.sh` is configurable via env vars (`TORCH_VERSION`, `TORCHVISION_VERSION`, `TORCH_CUDA_INDEX`,
-`TORCH_CUDA_ARCH_LIST`). The default `TORCH_CUDA_ARCH_LIST=8.6` targets Ampere GPUs (e.g. RTX A4500);
-set it to your GPU's compute capability if different.
+`TORCH_CUDA_ARCH_LIST`). By default the GPU compute capability is auto-detected from the visible GPU
+at build time; set `TORCH_CUDA_ARCH_LIST` (e.g. `8.6` for Ampere) to target a specific architecture,
+which is useful when building on a machine whose GPU differs from the deployment target.
 
 ### Manual installation
 
@@ -47,8 +48,9 @@ pip install --no-build-isolation 'git+https://github.com/facebookresearch/detect
 pip install -r requirements.txt
 pip install -e .
 
-# 4. Build the MultiScaleDeformableAttention CUDA op (set the arch for your GPU)
-export TORCH_CUDA_ARCH_LIST=8.6 FORCE_CUDA=1
+# 4. Build the MultiScaleDeformableAttention CUDA op
+#    (arch is auto-detected from the visible GPU; optionally pin it, e.g. export TORCH_CUDA_ARCH_LIST=8.6)
+export FORCE_CUDA=1
 ( cd pansr/modeling/pixel_decoder/ops && python setup.py build install )
 
 # 5. Verify

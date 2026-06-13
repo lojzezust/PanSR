@@ -27,9 +27,13 @@ cd "$REPO_DIR"
 TORCH_VERSION="${TORCH_VERSION:-2.4.1}"
 TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.19.1}"
 TORCH_CUDA_INDEX="${TORCH_CUDA_INDEX:-https://download.pytorch.org/whl/cu124}"
-# Compute capability for the CUDA op build (RTX A4500 = Ampere 8.6). Override for your GPU.
-export TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-8.6}"
 export FORCE_CUDA="${FORCE_CUDA:-1}"
+# GPU compute capability for the CUDA builds (detectron2 + the MSDeformAttn op).
+# If you set TORCH_CUDA_ARCH_LIST it is honored; otherwise it's left unset and
+# PyTorch auto-detects it from the visible GPU at build time.
+if [ -n "${TORCH_CUDA_ARCH_LIST:-}" ]; then
+  export TORCH_CUDA_ARCH_LIST
+fi
 
 # --- Sanity checks --------------------------------------------------------
 if [ -z "${VIRTUAL_ENV:-}" ] && [ -z "${CONDA_PREFIX:-}" ]; then
@@ -70,6 +74,11 @@ echo "==> Installing PanSR + Python dependencies"
 "$PY" -m pip install -e .
 
 echo "==> Building the MultiScaleDeformableAttention CUDA op"
+if [ -n "${TORCH_CUDA_ARCH_LIST:-}" ]; then
+  echo "    targeting compute capability TORCH_CUDA_ARCH_LIST=$TORCH_CUDA_ARCH_LIST"
+else
+  echo "    TORCH_CUDA_ARCH_LIST unset — PyTorch will auto-detect from the visible GPU"
+fi
 ( cd pansr/modeling/pixel_decoder/ops && "$PY" setup.py build install )
 
 # --- Verify ---------------------------------------------------------------
