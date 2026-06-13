@@ -141,20 +141,46 @@ LaRS-format panoptic PNG) and the CLI usage shown under [Inference](#inference).
 
 ## Training
 
+To train PanSR on LaRS, [download the dataset](https://lojzezust.github.io/lars-dataset/) and point to it with the `LARS_ROOT` environment variable.
+
 ```bash
 export LARS_ROOT=/path/to/LaRS
 
-# ResNet-50
-python train_net.py --num-gpus 4 --config-file configs/lars/panoptic/pansr_R50.yaml
+# ResNet-50 (copy-paste disabled)
+python train_net.py --num-gpus 4 --config-file configs/lars/panoptic/pansr_R50.yaml \
+    INPUT.COPY_PASTE.ENABLED False
 
 # Swin-L (set MODEL.WEIGHTS to the ImageNet-22k Swin-L backbone for from-scratch training)
 python train_net.py --num-gpus 4 --config-file configs/lars/panoptic/pansr_Swin_L.yaml \
+    INPUT.COPY_PASTE.ENABLED False \
     MODEL.WEIGHTS /path/to/swin_large_patch4_window12_384_22k.pkl
 ```
 
-**Note:** Copy-paste augmentation expects pre-extracted objects under `$LARS_ROOT/train/objects_v2`
-(configurable via `INPUT.COPY_PASTE.OBJECTS_DIR`). The Swin-L ImageNet-22k backbone weights
-(`swin_large_patch4_window12_384_22k.pkl`) are only needed for from-scratch training.
+The Swin-L ImageNet-22k backbone weights (`swin_large_patch4_window12_384_22k.pkl`) are recommended for from-scratch training.
+
+> [!NOTE]
+> Copy-paste augmentation is disabled in these examples. To enable it follow the instructions below.
+
+### Copy-paste augmentation
+
+Copy-paste pastes previously extracted foreground objects onto training images. Extract the
+objects once from the LaRS train split with
+[`pansr/data/utils/extract_objects.py`](pansr/data/utils/extract_objects.py):
+
+```bash
+python -m pansr.data.utils.extract_objects \
+    --dataset-dir $LARS_ROOT/train \
+    --output-dir $LARS_ROOT/train/objects_v2
+```
+
+This writes per-category RGBA cutouts under `--output-dir`. The configs default
+`INPUT.COPY_PASTE.OBJECTS_DIR` to `train/objects_v2` (resolved relative to `LARS_ROOT`; an
+absolute path also works), so once the objects exist you can train with copy-paste simply by
+dropping the `INPUT.COPY_PASTE.ENABLED False` override:
+
+```bash
+python train_net.py --num-gpus 4 --config-file configs/lars/panoptic/pansr_R50.yaml
+```
 
 ## Contributions (and where they live in the code)
 

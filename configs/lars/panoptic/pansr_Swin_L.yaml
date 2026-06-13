@@ -4,7 +4,7 @@ OUTPUT_DIR: output/runs/pansr_Swin_L
 INPUT:
   COPY_PASTE:
     ENABLED: True
-    OBJECTS_DIR: "/home/lojze/data/datasets/LaRS/split_v0.9.3/train/objects_v2"
+    OBJECTS_DIR: "train/objects_v2"   # relative to LARS_ROOT (or an absolute path)
     ROTATION_RANGE: [-15, 15]
     MAX_SCALE: 1.2
 

@@ -5,6 +5,7 @@
 # Modified from Mask2Former https://github.com/facebookresearch/Mask2Former by Feng Li.
 import copy
 import logging
+import os
 
 import numpy as np
 import torch
@@ -104,8 +105,13 @@ class COCOPanopticNewBaselineDatasetMapper:
 
         copy_paste = None
         if cfg.INPUT.COPY_PASTE.ENABLED:
+            objects_dir = cfg.INPUT.COPY_PASTE.OBJECTS_DIR
+            # A relative OBJECTS_DIR is resolved against the LaRS root (LARS_ROOT env var).
+            if objects_dir and not os.path.isabs(objects_dir):
+                from pansr.data.datasets.register_lars import LARS_ROOT
+                objects_dir = os.path.join(LARS_ROOT, objects_dir)
             copy_paste = CopyPaste(
-                objects_dir=cfg.INPUT.COPY_PASTE.OBJECTS_DIR,
+                objects_dir=objects_dir,
                 num_ranges=cfg.INPUT.COPY_PASTE.NUM_RANGES,
                 scale_ranges=cfg.INPUT.COPY_PASTE.SCALE_RANGES,
                 max_scale=cfg.INPUT.COPY_PASTE.MAX_SCALE,

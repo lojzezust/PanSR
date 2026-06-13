@@ -2,8 +2,17 @@
 # Copyright (c) 2026 University of Ljubljana. All rights reserved.
 # Licensed under the Apache License, Version 2.0
 # ------------------------------------------------------------------------
-"""Extracts objects from images and saves them as separate images."""
+"""Extracts 'thing' objects from the LaRS train split and saves them as RGBA cutouts.
 
+These cutouts are consumed by the copy-paste augmentation during training
+(``INPUT.COPY_PASTE.OBJECTS_DIR``). See the README's Training section.
+
+    python -m pansr.data.utils.extract_objects \
+        --dataset-dir $LARS_ROOT/train \
+        --output-dir $LARS_ROOT/train/objects_v2
+"""
+
+import argparse
 import os
 import os.path as osp
 import json
@@ -12,13 +21,9 @@ import numpy as np
 from tqdm.auto import tqdm
 
 
-DATASET_DIR = '/home/lojze/data/datasets/LaRS/split_v0.9.3/train'
 ANN_FILE = 'mmdet_annotations.json'
 IMG_DIR = 'images'
 MASK_DIR = 'panoptic_masks'
-SIZE_THRESHOLD = 256
-
-OUTPUT_DIR = '/home/lojze/data/datasets/LaRS/split_v0.9.3/train/objects_v2'
 
 def rgb2id(color):
     if isinstance(color, np.ndarray) and len(color.shape) == 3:
@@ -51,10 +56,23 @@ def mask2bbox(mask):
     return x0,y0,x1,y1
 
 
-def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+def parse_args():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--dataset-dir', required=True,
+                    help="LaRS train split dir (contains images/, panoptic_masks/, and the annotations file)")
+    ap.add_argument('--output-dir', required=True,
+                    help="Where to write the per-category object cutouts (e.g. $LARS_ROOT/train/objects_v2)")
+    ap.add_argument('--ann-file', default=ANN_FILE, help=f"Annotations file name (default: {ANN_FILE})")
+    ap.add_argument('--size-threshold', type=int, default=256,
+                    help="Skip objects smaller than this many pixels (default: 256)")
+    return ap.parse_args()
 
-    with open(osp.join(DATASET_DIR, ANN_FILE), 'r') as f:
+
+def main():
+    args = parse_args()
+    os.makedirs(args.output_dir, exist_ok=True)
+
+    with open(osp.join(args.dataset_dir, args.ann_file), 'r') as f:
         annotations = json.load(f)
 
     id2img = {img['id']: img for img in annotations['images']}
@@ -63,11 +81,11 @@ def main():
     for annotation in tqdm(annotations['annotations']):
         filename = id2img[annotation['image_id']]['file_name']
         name = osp.splitext(filename)[0]
-        image_path = os.path.join(DATASET_DIR, IMG_DIR, filename)
+        image_path = os.path.join(args.dataset_dir, IMG_DIR, filename)
         image = np.array(Image.open(image_path))
 
         mask_filename = annotation['file_name']
-        mask_path = os.path.join(DATASET_DIR, MASK_DIR, mask_filename)
+        mask_path = os.path.join(args.dataset_dir, MASK_DIR, mask_filename)
         mask = rgb2id(np.array(Image.open(mask_path)))
 
         for segment_info in annotation['segments_info']:
@@ -77,7 +95,7 @@ def main():
 
             obj_mask = segment_info['id'] == mask
 
-            if obj_mask.sum() < SIZE_THRESHOLD:
+            if obj_mask.sum() < args.size_threshold:
                 continue
 
             # Skip if object touches the border
@@ -91,7 +109,7 @@ def main():
 
             img_a = np.concatenate([obj_image * obj_mask, obj_mask * 255], axis=2).astype(np.uint8)
 
-            out_dir = os.path.join(OUTPUT_DIR, '%d' % segment_info['category_id'])
+            out_dir = os.path.join(args.output_dir, '%d' % segment_info['category_id'])
             if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
 
